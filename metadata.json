@@ -1,0 +1,7 @@
+{
+  "name": "GeoSales Tracker",
+  "description": "A mobile-first attendance and live location tracking system for sales teams, featuring Admin dashboards and AI-powered activity reports.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
