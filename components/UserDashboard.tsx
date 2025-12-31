@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, AttendanceStatus, AttendanceRecord, MeetingRecord } from '../types';
+import { ensureLocationPermission, getCurrentLocation } from '../utils/location';
 import { db } from '../services/database';
 import { 
   Play, Square, Briefcase, Clock, Home, User as UserIcon, CheckCircle2, 
@@ -38,93 +39,117 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
     return () => clearInterval(t);
   }, []);
 
-  const handlePunch = () => {
+  const handlePunch = async () => {
     if (loading) return;
     setLoading(true);
-
-    if (!navigator.geolocation) {
-      alert("GPS not supported");
+  
+    const hasPermission = await ensureLocationPermission();
+    if (!hasPermission) {
       setLoading(false);
+      alert("Location permission is required to Punch In.");
       return;
     }
-
-    const type = isCheckedIn ? AttendanceStatus.CHECKED_OUT : AttendanceStatus.CHECKED_IN;
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        onAttendanceAction(type, pos.coords.latitude, pos.coords.longitude);
-        setLoading(false);
-      },
-      (err) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            onAttendanceAction(type, pos.coords.latitude, pos.coords.longitude);
-            setLoading(false);
-          },
-          (err2) => {
-            setLoading(false);
-            if (err2.code === 1) onPermissionDenied();
-            else alert("Could not acquire location. Please try again.");
-          },
-          { enableHighAccuracy: false, timeout: 5000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+  
+    try {
+      const pos = await getCurrentLocation();
+      const type = isCheckedIn
+        ? AttendanceStatus.CHECKED_OUT
+        : AttendanceStatus.CHECKED_IN;
+  
+      onAttendanceAction(type, pos.coords.latitude, pos.coords.longitude);
+    } catch (e) {
+      alert("Unable to fetch GPS location. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
+  
 
-  const handleSOS = () => {
-    if (!confirm("TRIGGER SOS ALERT? This will immediately notify the Admin with your precise location for emergency assistance.")) return;
-    
+  const handleSOS = async () => {
+    if (!confirm("TRIGGER SOS ALERT?")) return;
+  
     setLoading(true);
-    navigator.geolocation.getCurrentPosition((pos) => {
-      onAttendanceAction(AttendanceStatus.CHECKED_IN, pos.coords.latitude, pos.coords.longitude, ['EMERGENCY_SOS']);
+  
+    const hasPermission = await ensureLocationPermission();
+    if (!hasPermission) {
       setLoading(false);
-      alert("SOS SIGNAL SENT. PLEASE STAY CALM AND REMAIN AT YOUR LOCATION.");
-    }, () => {
-      onAttendanceAction(AttendanceStatus.CHECKED_IN, 0, 0, ['EMERGENCY_SOS', 'GPS_FAIL_SOS']);
+      alert("Location permission required for SOS.");
+      return;
+    }
+  
+    try {
+      const pos = await getCurrentLocation();
+      onAttendanceAction(
+        AttendanceStatus.CHECKED_IN,
+        pos.coords.latitude,
+        pos.coords.longitude,
+        ['EMERGENCY_SOS']
+      );
+      alert("SOS SIGNAL SENT.");
+    } catch {
+      onAttendanceAction(
+        AttendanceStatus.CHECKED_IN,
+        0,
+        0,
+        ['EMERGENCY_SOS', 'GPS_FAIL_SOS']
+      );
+      alert("SOS SENT (GPS unavailable).");
+    } finally {
       setLoading(false);
-      alert("SOS SENT (GPS FAIL). PLEASE SEEK SAFETY IMMEDIATELY.");
-    });
+    }
   };
+  
 
-  const handleSaveMeeting = (e: React.FormEvent) => {
+  const handleSaveMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
+  
     if (!isCheckedIn) {
       alert("Please Punch In before recording a meeting.");
       return;
     }
-
+  
     if (!meetingForm.clientName) {
       alert("Please select a client.");
       return;
     }
-    
+  
     setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const newMeeting: MeetingRecord = {
-          id: Math.random().toString(36).substr(2, 9),
-          userId: currentUser.id,
-          userName: currentUser.name,
-          clientName: meetingForm.clientName,
-          notes: meetingForm.notes,
-          timestamp: new Date(),
-          location: { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        };
-        
-        const updated = db.addMeeting(newMeeting);
-        setLocalMeetings(updated.filter(m => m.userId === currentUser.id));
-        setIsMeetingModalOpen(false);
-        setMeetingForm({ clientName: '', notes: '' });
-        setLoading(false);
-      },
-      () => {
-        alert("GPS required for meeting tag.");
-        setLoading(false);
-      }
-    );
+  
+    const hasPermission = await ensureLocationPermission();
+    if (!hasPermission) {
+      setLoading(false);
+      alert("Location permission required for meeting.");
+      return;
+    }
+  
+    try {
+      const pos = await getCurrentLocation();
+  
+      const newMeeting: MeetingRecord = {
+        id: Math.random().toString(36).substr(2, 9),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        clientName: meetingForm.clientName,
+        notes: meetingForm.notes,
+        timestamp: new Date(),
+        location: {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        }
+      };
+  
+      const updated = db.addMeeting(newMeeting);
+      setLocalMeetings(updated.filter(m => m.userId === currentUser.id));
+      setIsMeetingModalOpen(false);
+      setMeetingForm({ clientName: '', notes: '' });
+  
+    } catch {
+      alert("Unable to fetch GPS for meeting.");
+    } finally {
+      setLoading(false);
+    }
   };
+  
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
