@@ -229,15 +229,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, attendanceHistor
       )}
 
       <div className="p-6 space-y-6">
-        <header className="flex justify-between items-center">
+        <header className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">OPERATIONS</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              <CheckCircle2 size={12} className="text-blue-500" /> System Control Center
+            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">OPERATIONS</h1>
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mt-2">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full border border-blue-500 text-blue-500">
+                <Check size={10} strokeWidth={4} />
+              </span> 
+              System Control Center
             </p>
           </div>
-          <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 text-white p-4.5 rounded-[1.5rem] shadow-xl active:scale-90 transition-transform flex items-center gap-2">
-            <UserPlus size={20} />
+          <button onClick={() => setIsModalOpen(true)} className="text-slate-900 p-2 hover:bg-slate-100 rounded-full transition-colors active:scale-90">
+            <UserPlus size={28} strokeWidth={2.5} />
           </button>
         </header>
 
@@ -632,9 +635,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, attendanceHistor
               <div className="w-24 h-24 bg-red-50 text-red-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-red-100 shadow-xl shadow-red-50">
                 <Trash2 size={40} />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-3 uppercase tracking-tight">Security Halt</h3>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-10 leading-relaxed px-4">
-                You are about to permanently purge <span className="text-red-600 font-black underline decoration-2">{editingUser?.name}</span> and all associated datasets. This operation is irreversible.
+              <h3 className="text-2xl font-black text-slate-900 mb-3 uppercase tracking-tight">Delete Employee?</h3>
+              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-10 leading-relaxed px-4 text-center">
+                Are you sure you want to delete <span className="text-red-600">{editingUser?.name}</span>? This will permanently remove all their associated data from the system.
               </p>
               
               <div className="space-y-4">
@@ -643,7 +646,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, attendanceHistor
                   disabled={isProcessing}
                   className="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl shadow-red-200 active:scale-95 transition-all flex items-center justify-center gap-3"
                 >
-                  {isProcessing ? <Loader2 size={18} className="animate-spin" /> : 'Confirm Purge'}
+                  {isProcessing ? <Loader2 size={18} className="animate-spin" /> : 'Confirm Deletion'}
                 </button>
                 <button 
                   onClick={() => setIsDeleteConfirmOpen(false)}

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, AttendanceStatus, AttendanceRecord, MeetingRecord } from '../types';
-import { ensureLocationPermission, getCurrentLocation } from '../utils/location';
+import { checkLocationReady, getCurrentPosition } from '../utils/location';
 import { db } from '../services/database';
 import { 
   Play, Square, Briefcase, Clock, Home, User as UserIcon, CheckCircle2, 
@@ -40,29 +40,38 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
   }, []);
 
   const handlePunch = async () => {
-    if (loading) return;
     setLoading(true);
   
-    const hasPermission = await ensureLocationPermission();
-    if (!hasPermission) {
+    const status = await checkLocationReady();
+  
+    if (!status.ok) {
       setLoading(false);
-      alert("Location permission is required to Punch In.");
+  
+      if (status.reason === 'NO_PERMISSION') {
+        alert('Location permission is required.');
+      }
+  
+      if (status.reason === 'GPS_OFF') {
+        alert('GPS is turned off. Please enable location services.');
+      }
+  
       return;
     }
   
-    try {
-      const pos = await getCurrentLocation();
-      const type = isCheckedIn
-        ? AttendanceStatus.CHECKED_OUT
-        : AttendanceStatus.CHECKED_IN;
+    const pos = await getCurrentPosition();
   
-      onAttendanceAction(type, pos.coords.latitude, pos.coords.longitude);
-    } catch (e) {
-      alert("Unable to fetch GPS location. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    onAttendanceAction(
+      isCheckedIn
+        ? AttendanceStatus.CHECKED_OUT
+        : AttendanceStatus.CHECKED_IN,
+      pos.coords.latitude,
+      pos.coords.longitude
+    );
+  
+    setLoading(false);
   };
+  
+  
   
 
   const handleSOS = async () => {
@@ -70,7 +79,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
   
     setLoading(true);
   
-    const hasPermission = await ensureLocationPermission();
+    const hasPermission = await checkLocationReady();
     if (!hasPermission) {
       setLoading(false);
       alert("Location permission required for SOS.");
@@ -78,7 +87,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
     }
   
     try {
-      const pos = await getCurrentLocation();
+      const pos = await getCurrentPosition();
       onAttendanceAction(
         AttendanceStatus.CHECKED_IN,
         pos.coords.latitude,
@@ -115,7 +124,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
   
     setLoading(true);
   
-    const hasPermission = await ensureLocationPermission();
+    const hasPermission = await checkLocationReady();
     if (!hasPermission) {
       setLoading(false);
       alert("Location permission required for meeting.");
@@ -123,7 +132,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
     }
   
     try {
-      const pos = await getCurrentLocation();
+      const pos = await getCurrentPosition();
   
       const newMeeting: MeetingRecord = {
         id: Math.random().toString(36).substr(2, 9),
